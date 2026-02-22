@@ -777,7 +777,10 @@ function setupExecuteButton() {
     if (!SIGNAL_DATA?.signal?.execution) return;
 
     // 生成幂等键
-    const idempotencyKey = crypto.randomUUID();
+    const idempotencyKey = (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function")
+      ? crypto.randomUUID()
+      : "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
+        (+c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (+c / 4)))).toString(16));
 
     // UI 锁定
     btn.disabled = true;

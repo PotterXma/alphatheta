@@ -7,6 +7,7 @@
 // ══════════════════════════════════════════════════════════════════
 
 import { calculateComboPayoff, calculateNetPremium, calculateComboPayoffDualCurve, calculatePortfolioGreeks } from "../utils/payoff-engine.js";
+import { uuid } from "../utils/uuid.js";
 import { snapToStrike, resolveTemplate, fetchOptionChainMini, fetchExpirations } from "../utils/market-helpers.js";
 import { STRATEGY_TEMPLATES } from "../utils/strategy-templates.js";
 import { autoSuggestNeutralStrategy, autoAssembleStrategy, findTargetExpiration } from "../utils/strategy-generator.js";
@@ -32,7 +33,7 @@ let _freshnessTimer = null;    // TTL 定时器
 
 function createDefaultLeg() {
     return {
-        id: crypto.randomUUID(),
+        id: uuid(),
         type: "option",
         right: "put",
         action: "sell",
@@ -46,7 +47,7 @@ function createDefaultLeg() {
 
 function createStockLeg(ticker, price, quantity = 100) {
     return {
-        id: crypto.randomUUID(),
+        id: uuid(),
         type: "stock",
         right: null,
         action: "buy",

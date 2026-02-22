@@ -1,3 +1,5 @@
+import { uuid } from "./uuid.js";
+
 // ══════════════════════════════════════════════════════════════════
 // AlphaTheta v2 — LEAPS Smart Strategy Generator
 // ══════════════════════════════════════════════════════════════════
@@ -247,7 +249,7 @@ function generateDeepITMCall(spotPrice, calls, expiration) {
     validateLiquidity(deepCall.bid, deepCall.ask, `Call $${deepCall.strike}`);
 
     return [{
-        id: crypto.randomUUID(),
+        id: uuid(),
         type: "option",
         right: "call",
         action: "buy",
@@ -291,7 +293,7 @@ function generateDeepITMPutSpread(spotPrice, puts, expiration) {
     const shortPut = findClosestStrike(puts, shortPutTarget);
 
     const legs = [{
-        id: crypto.randomUUID(),
+        id: uuid(),
         type: "option",
         right: "put",
         action: "buy",
@@ -308,7 +310,7 @@ function generateDeepITMPutSpread(spotPrice, puts, expiration) {
         try {
             validateLiquidity(shortPut.bid, shortPut.ask, `Put $${shortPut.strike}`);
             legs.push({
-                id: crypto.randomUUID(),
+                id: uuid(),
                 type: "option",
                 right: "put",
                 action: "sell",
@@ -364,7 +366,7 @@ export function generateIronCondor(spotPrice, optionChainData, expiration = null
 
     const exp = expiration || new Date().toISOString().split("T")[0];
     const makeLeg = (right, action, contract) => ({
-        id: crypto.randomUUID(),
+        id: uuid(),
         type: "option",
         right,
         action,
@@ -453,7 +455,7 @@ function generateShortOTMCall(spotPrice, calls, expiration) {
         validateQuote(otmCall, "sell");
         validateLiquidity(otmCall.bid, otmCall.ask, `OTM Call $${otmCall.strike}`);
         return {
-            id: crypto.randomUUID(),
+            id: uuid(),
             type: "option",
             right: "call",
             action: "sell",
@@ -521,7 +523,7 @@ export function autoAssembleStrategy(ticker, direction, currentBP, chainData, ex
             case "buy_write": {
                 // ── Buy-Write: 100 股正股 + OTM Call 卖出 ──────────
                 const stockLeg = {
-                    id: crypto.randomUUID(),
+                    id: uuid(),
                     type: "stock",
                     right: null,
                     action: "buy",

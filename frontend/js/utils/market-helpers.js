@@ -1,3 +1,5 @@
+import { uuid } from "./uuid.js";
+
 // ══════════════════════════════════════════════════════════════════
 // AlphaTheta v2 — Market Helpers (期权链工具函数)
 // ══════════════════════════════════════════════════════════════════
@@ -103,7 +105,7 @@ export function resolveTemplate(template, spotPrice, availableStrikes, baseExpir
         }
 
         return {
-            id: crypto.randomUUID(),
+            id: uuid(),
             type: tl.type || "option",
             right: tl.right || "put",
             action: tl.action || "sell",
