@@ -19,6 +19,9 @@ COPY renderCharts.js /usr/share/nginx/html/
 # 复制 ESM 模块目录
 COPY js/ /usr/share/nginx/html/js/
 
+# 复制图片资源 (二维码等)
+COPY img/ /usr/share/nginx/html/img/
+
 # 复制 nginx 配置 — SPA fallback + API 反向代理
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 

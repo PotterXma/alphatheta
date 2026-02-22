@@ -93,6 +93,10 @@
           <span data-i18n="nav_settings">系统设置</span>
         </li>
       </ul>
+      <div class="sidebar-qr">
+        <img src="img/wechat-qr.jpg" alt="微信二维码" class="sidebar-qr-img" />
+        <div class="sidebar-qr-label">扫码定制您的专属策略引擎</div>
+      </div>
     </nav>
 
     <!-- ── MAIN CONTENT ── -->
@@ -559,11 +563,38 @@
     </div>
   </div>
 
+  <!-- ═══════ WeChat Contact Widget ═══════ -->
+  <div class="wechat-fab" id="wechatFab" title="微信联系">
+    <svg viewBox="0 0 24 24" width="28" height="28" fill="#07C160">
+      <path
+        d="M8.691 2.188C3.891 2.188 0 5.476 0 9.534c0 2.22 1.174 4.187 3.002 5.524l-.748 2.247 2.623-1.312c.934.279 1.9.43 2.814.43.314 0 .625-.018.933-.05a5.97 5.97 0 0 1-.233-1.633c0-3.588 3.232-6.502 7.218-6.502.381 0 .756.03 1.124.083C16.037 4.693 12.659 2.188 8.691 2.188zM5.725 5.908a1.045 1.045 0 1 1 0 2.09 1.045 1.045 0 0 1 0-2.09zm5.932 0a1.045 1.045 0 1 1 0 2.09 1.045 1.045 0 0 1 0-2.09zM15.609 9.034c-3.53 0-6.391 2.55-6.391 5.696 0 3.148 2.862 5.696 6.391 5.696.698 0 1.371-.103 2.007-.29l2.08 1.04-.594-1.782c1.53-1.118 2.498-2.77 2.498-4.664 0-3.145-2.862-5.696-6.391-5.696h-.6zm-1.97 3.213a.87.87 0 1 1 0 1.74.87.87 0 0 1 0-1.74zm3.94 0a.87.87 0 1 1 0 1.74.87.87 0 0 1 0-1.74z" />
+    </svg>
+  </div>
+  <div class="wechat-popup" id="wechatPopup">
+    <div class="wechat-popup-header">
+      <span>📱 微信联系定制</span>
+      <button class="wechat-popup-close" id="wechatPopupClose">✕</button>
+    </div>
+    <img src="img/wechat-qr.jpg" alt="微信二维码" class="wechat-qr-img" />
+    <div class="wechat-info">
+      <div class="wechat-desc">根据您的需求帮您定制</div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
   <script src="renderCharts.js"></script>
   <!-- ESM 模块入口 — app.js 已完全迁移到 js/main.js -->
   <script type="module" src="./js/main.js"></script>
+  <script>
+    // WeChat contact widget toggle
+    document.getElementById('wechatFab').addEventListener('click', () => {
+      document.getElementById('wechatPopup').classList.toggle('open');
+    });
+    document.getElementById('wechatPopupClose').addEventListener('click', () => {
+      document.getElementById('wechatPopup').classList.remove('open');
+    });
+  </script>
 </body>
 
 </html>
