@@ -183,6 +183,18 @@
             color: var(--muted);
         }
 
+        .geo-info {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.76rem;
+            color: var(--text);
+        }
+
+        .geo-detail {
+            font-size: 0.68rem;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
         .daily-row {
             display: flex;
             align-items: center;
@@ -249,6 +261,7 @@
                     <tr>
                         <th>IP 地址</th>
                         <th>类型</th>
+                        <th>地理位置</th>
                         <th>最后访问</th>
                     </tr>
                 </thead>
@@ -306,10 +319,18 @@
 
             // IP table
             document.getElementById('ipTable').innerHTML = d.ips.map(ip => {
-                const isPrivate = PRIVATE_RE.test(ip.ip);
+                const isPrivate = ip.is_private;
+                const geo = ip.geo;
+                let geoHtml = '<span class="tag-internal">—</span>';
+                if (geo) {
+                    const loc = [geo.country, geo.region, geo.city].filter(Boolean).join(' · ');
+                    const isp = geo.isp || geo.org || '';
+                    geoHtml = `<div class="geo-info">${loc}</div>${isp ? `<div class="geo-detail">${isp}</div>` : ''}`;
+                }
                 return `<tr>
           <td>${ip.ip}</td>
           <td class="${isPrivate ? 'tag-internal' : 'tag-external'}">${isPrivate ? '内网' : '外网'}</td>
+          <td>${geoHtml}</td>
           <td>${ip.last_seen}</td>
         </tr>`;
             }).join('');
