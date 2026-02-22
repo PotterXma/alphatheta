@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AlphaTheta · 自动化期权策略引擎</title>
+  <meta name="description" content="AlphaTheta 自动化期权策略引擎 - 企业级量化交易中枢" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+  <!-- ═══════════ TICKER BAR ═══════════ -->
+  <div class="ticker-bar" id="tickerBar">
+    <div class="ticker-track" id="tickerTrack"></div>
+  </div>
+
+  <!-- ═══════════ TOP HEADER ═══════════ -->
+  <header class="top-header">
+    <div class="header-left">
+      <div class="logo">
+        <svg class="logo-icon" viewBox="0 0 32 32" width="26" height="26">
+          <defs>
+            <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#06b6d4" />
+              <stop offset="100%" stop-color="#3b82f6" />
+            </linearGradient>
+          </defs>
+          <polygon points="16,2 28,10 28,22 16,30 4,22 4,10" fill="none" stroke="url(#logoGrad)" stroke-width="2" />
+          <polygon points="16,8 22,12 22,20 16,24 10,20 10,12" fill="url(#logoGrad)" opacity="0.35" />
+          <circle cx="16" cy="16" r="3" fill="url(#logoGrad)" />
+        </svg>
+        <span class="logo-text">AlphaTheta</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="kill-switch-btn" id="killSwitchBtn" data-i18n="kill_switch">紧急暂停</button>
+      <button class="lang-toggle" id="langToggle">EN / 中文</button>
+      <div class="status-indicator" id="systemStatus">
+        <span class="status-dot online"></span>
+        <span class="status-label" data-i18n="nav_status_synced">数据已同步</span>
+      </div>
+      <div class="nav-clock mono" id="navClock">--</div>
+    </div>
+  </header>
+
+  <!-- ═══════════ HALT OVERLAY ═══════════ -->
+  <div class="halt-overlay" id="haltOverlay">
+    <div class="halt-overlay-content">
+      <span class="halt-icon">⚠</span>
+      <span data-i18n="halt_msg">交易引擎已暂停</span>
+    </div>
+  </div>
+
+  <!-- ═══════════ APP SHELL ═══════════ -->
+  <div class="app-shell">
+
+    <!-- ── SIDEBAR ── -->
+    <nav class="sidebar" id="sidebar">
+      <ul class="sidebar-menu">
+        <li class="sidebar-item active" data-view="dashboard">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" fill="currentColor" />
+          </svg>
+          <span data-i18n="nav_dashboard">大盘概览</span>
+        </li>
+        <li class="sidebar-item" data-view="signal">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path d="M12 2L4.5 20.3l.7.7L12 18l6.8 3 .7-.7z" fill="currentColor" />
+          </svg>
+          <span data-i18n="nav_signal">信号与执行</span>
+        </li>
+
+        <li class="sidebar-item" data-view="lifecycle">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2z"
+              fill="currentColor" />
+          </svg>
+          <span data-i18n="nav_tracking">全程跟踪与报告</span>
+        </li>
+        <li class="sidebar-item" data-view="settings">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path
+              d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"
+              fill="currentColor" />
+          </svg>
+          <span data-i18n="nav_settings">系统设置</span>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- ── MAIN CONTENT ── -->
+    <main class="main-content">
+
+      <!-- ══════ VIEW: DASHBOARD ══════ -->
+      <section class="view" id="view-dashboard">
+        <div class="view-header">
+          <h1 data-i18n="nav_dashboard">大盘概览</h1>
+        </div>
+
+        <!-- Portfolio -->
+        <div class="portfolio-row">
+          <div class="glass-card portfolio-card">
+            <div class="portfolio-label" data-i18n="portfolio_net">账户总净值</div>
+            <div class="portfolio-value mono" id="portfolioNet">--</div>
+          </div>
+          <div class="glass-card portfolio-card">
+            <div class="portfolio-label" data-i18n="portfolio_cash">可用购买力</div>
+            <div class="portfolio-value mono" id="portfolioCash">--</div>
+          </div>
+          <div class="glass-card portfolio-card margin-card">
+            <div class="portfolio-label" data-i18n="margin_util">保证金使用率</div>
+            <div class="margin-bar-wrapper">
+              <div class="margin-bar" id="marginBar"></div>
+            </div>
+            <div class="margin-value mono" id="marginValue">--</div>
+          </div>
+        </div>
+
+        <!-- Radar -->
+        <div class="radar-row">
+          <div class="glass-card radar-card" id="cardVix" data-ticker="^VIX" style="cursor:pointer">
+            <div class="radar-card-label" data-i18n="radar_vix">恐慌指数与波动率</div>
+            <div class="radar-card-value mono" id="vixValue">--</div>
+            <div class="radar-card-sub" id="vixSub">--</div>
+            <div class="radar-card-extra mono" id="ivRankDisplay">--</div>
+          </div>
+          <div class="glass-card radar-card active" id="cardSpy" data-ticker="SPY" style="cursor:pointer">
+            <div class="radar-card-label" data-i18n="radar_spy">标普500 状态</div>
+            <div class="radar-card-value mono" id="spyPrice">--</div>
+            <div class="radar-card-sub" id="spySma">--</div>
+          </div>
+          <div class="glass-card radar-card" id="cardQqq" data-ticker="QQQ" style="cursor:pointer">
+            <div class="radar-card-label" data-i18n="radar_qqq">纳指100 状态</div>
+            <div class="radar-card-value mono" id="qqqPrice">--</div>
+            <div class="radar-card-sub" id="qqqSma">--</div>
+          </div>
+        </div>
+
+        <!-- Charts Grid (Candlestick + Equity Curve) -->
+        <div class="dashboard-charts-grid">
+          <div class="glass-card chart-card chart-card-main">
+            <div class="chart-card-header">
+              <div class="chart-card-title mono" id="chartTitle">SPY — K 线 + SMA200</div>
+              <div class="chart-card-timeframe">
+                <button class="tf-btn active" data-tf="1D">1D</button>
+                <button class="tf-btn" data-tf="1W">1W</button>
+                <button class="tf-btn" data-tf="1M">1M</button>
+              </div>
+            </div>
+            <div class="chart-container" id="kline-chart-container"></div>
+          </div>
+          <div class="glass-card chart-card chart-card-side">
+            <div class="chart-card-header">
+              <div class="chart-card-title mono">Portfolio Equity Curve</div>
+              <div class="chart-card-value" id="equityCurrentValue">--</div>
+            </div>
+            <div class="chart-container" id="equity-chart-container"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════ VIEW: SIGNAL ══════ -->
+      <section class="view hidden" id="view-signal">
+        <div class="view-header">
+          <h1>🏗️ 全景策略工作室 (Strategy Studio)</h1>
+          <span class="global-ticker-badge">🎯 <span id="studioTickerLabel">SPY</span></span>
+        </div>
+
+        <!-- ── Toolbar ── -->
+        <div class="studio-toolbar">
+          <select id="studioTemplateSelect">
+            <option value="">— 选择策略模板 —</option>
+          </select>
+          <button class="studio-btn-primary" id="studioAddLeg">+ 添加期权腿</button>
+          <button class="studio-btn-ai" id="studioAutoSuggest">⚡ 智能组装</button>
+          <button class="studio-btn-ghost" id="studioClearAll">🗑️ 清空</button>
+        </div>
+        <div id="studioStatusBar" class="studio-status-bar" style="display:none;"></div>
+
+        <!-- ── 🏆 智能推荐 Top 3 ── -->
+        <div class="recommendation-panel" id="recommendationPanel">
+          <div class="rec-panel-header">🏆 智能推荐 Top 3</div>
+          <div class="rec-cards" id="recCardsContainer">
+            <div style="text-align:center;color:#64748b;padding:20px;grid-column:1/-1;">⏳ 正在扫描票池...</div>
+          </div>
+        </div>
+
+        <!-- ── 2-Column Container ── -->
+        <div class="studio-container">
+
+          <!-- Left Panel: Build -->
+          <div class="studio-left-panel">
+            <div class="studio-glass">
+              <div class="legs-header">
+                <span>动作</span><span>类型</span><span>到期日</span><span>行权价</span><span>价格</span><span>数量</span><span></span>
+              </div>
+              <div id="legsContainer">
+                <div class="studio-empty">
+                  <p>📐 选择策略模板或点击 [+ 添加期权腿] 开始构建</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Panel: Analysis -->
+          <div class="studio-right-panel">
+
+            <!-- Chart with Controls -->
+            <div class="chart-card">
+              <div class="chart-card-title">📈 到期 + T+n 双曲线推演</div>
+
+              <!-- Simulation Controls -->
+              <div class="chart-controls">
+                <div class="sim-controls">
+                  <div class="sim-slider-group">
+                    <label class="sim-label">🎯 T+n 目标天数</label>
+                    <input type="range" id="simDteSlider" class="sim-slider" min="0" max="365" value="90" step="5">
+                    <span class="sim-value mono" id="simDteValue">90d</span>
+                  </div>
+                  <div class="sim-slider-group">
+                    <label class="sim-label">📈 隐含波动率</label>
+                    <input type="range" id="simIvSlider" class="sim-slider" min="5" max="150" value="25" step="1">
+                    <span class="sim-value mono" id="simIvValue">25%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div id="payoffChart" style="width:100%;height:320px;"></div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ── Bottom Panel: Metrics + Greeks (Full Width) ── -->
+        <div class="studio-bottom-panel">
+          <!-- Metrics Grid -->
+          <div class="metrics-grid">
+            <!-- Net Premium (span full) -->
+            <div class="metric-box net-premium">
+              <span class="metric-label" id="studioNetLabel">Net Premium</span>
+              <span class="metric-value" id="studioNetPremium">$0.00</span>
+            </div>
+
+            <!-- Max Profit -->
+            <div class="metric-box">
+              <span class="metric-label">Max Profit</span>
+              <span class="metric-value profit" id="studioMaxProfit">--</span>
+            </div>
+
+            <!-- Max Loss -->
+            <div class="metric-box">
+              <span class="metric-label">Max Loss</span>
+              <span class="metric-value loss" id="studioMaxLoss">--</span>
+            </div>
+
+            <!-- Break-even -->
+            <div class="metric-box">
+              <span class="metric-label">Break-even</span>
+              <span class="metric-value" id="studioBreakeven">--</span>
+            </div>
+
+            <!-- Collateral -->
+            <div class="metric-box">
+              <span class="metric-label">Est. Collateral</span>
+              <span class="metric-value" id="studioCollateral">--</span>
+            </div>
+          </div>
+
+          <!-- Portfolio Greeks Matrix -->
+          <div class="greeks-grid">
+            <div class="greek-card">
+              <span class="greek-symbol">Δ</span>
+              <span class="greek-label">NET DELTA</span>
+              <span class="greek-value mono" id="greekDelta">0.000</span>
+            </div>
+            <div class="greek-card">
+              <span class="greek-symbol">Γ</span>
+              <span class="greek-label">NET GAMMA</span>
+              <span class="greek-value mono" id="greekGamma">0.000</span>
+            </div>
+            <div class="greek-card">
+              <span class="greek-symbol">Θ</span>
+              <span class="greek-label">NET THETA</span>
+              <span class="greek-value mono" id="greekTheta">0.00</span>
+            </div>
+            <div class="greek-card">
+              <span class="greek-symbol">V</span>
+              <span class="greek-label">NET VEGA</span>
+              <span class="greek-value mono" id="greekVega">0.00</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ══════ VIEW: LIFECYCLE ══════ -->
+      <section class="view hidden" id="view-lifecycle">
+        <div class="view-header">
+          <h1 data-i18n="nav_tracking">全程跟踪与报告</h1>
+        </div>
+
+        <!-- Portfolio HUD -->
+        <div class="portfolio-hud">
+          <div class="hud-cell">
+            <div class="hud-label">Margin Utilization</div>
+            <div class="hud-margin-bar">
+              <div class="hud-margin-fill" id="hudMarginFill"></div>
+            </div>
+            <div class="hud-value mono" id="hudMarginValue">--</div>
+          </div>
+          <div class="hud-cell">
+            <div class="hud-label">Net SPY Delta</div>
+            <div class="hud-value hud-value-lg mono" id="hudNetDelta">--</div>
+          </div>
+          <div class="hud-cell">
+            <div class="hud-label">Net Theta / Day</div>
+            <div class="hud-value hud-value-lg hud-theta mono" id="hudNetTheta">--</div>
+          </div>
+        </div>
+
+        <!-- Positions Table -->
+        <div class="glass-card positions-card">
+          <h2 class="section-title" data-i18n="pos_title">当前活跃持仓</h2>
+          <div class="table-wrapper" id="posTableWrapper">
+            <table class="positions-table" id="positionsTable">
+              <thead>
+                <tr>
+                  <th data-i18n="pos_col_ticker">交易标的</th>
+                  <th data-i18n="pos_col_type">类型</th>
+                  <th data-i18n="pos_col_strike">行权价</th>
+                  <th data-i18n="pos_col_expiry">到期日</th>
+                  <th data-i18n="pos_col_dte">剩余天数</th>
+                  <th data-i18n="pos_col_premium">初始权利金</th>
+                  <th data-i18n="pos_col_current">当前价值</th>
+                  <th data-i18n="pos_col_pnl">盈亏比例</th>
+                  <th data-i18n="pos_col_actions">操作</th>
+                </tr>
+              </thead>
+              <tbody id="positionsBody"></tbody>
+            </table>
+          </div>
+          <!-- Card View (mobile) -->
+          <div class="card-view" id="posCardsContainer"></div>
+        </div>
+
+        <!-- Performance Report -->
+        <div class="glass-card report-card">
+          <h2 class="section-title" data-i18n="report_title">自动化运行绩效报告</h2>
+          <div class="bot-telemetry">
+            <div class="telemetry-status">
+              <span class="beacon" id="telemetryBeacon"></span>
+              <span class="beacon-label mono" id="telemetryStatusLabel">--</span>
+            </div>
+            <div class="telemetry-metrics">
+              <div class="telemetry-metric">
+                <span class="telemetry-metric-label">今日执行指令</span>
+                <span class="telemetry-metric-value mono" id="telemetryOrders">--</span>
+              </div>
+              <div class="telemetry-metric">
+                <span class="telemetry-metric-label">API 延迟</span>
+                <span class="telemetry-metric-value mono" id="telemetryLatency">--</span>
+              </div>
+              <div class="telemetry-metric">
+                <span class="telemetry-metric-label">累计权利金</span>
+                <span class="telemetry-metric-value mono" id="reportPremium">--</span>
+              </div>
+            </div>
+          </div>
+          <div class="chart-wrapper">
+            <div id="equityCurveChart" style="width:100%;height:360px;"></div>
+          </div>
+          <div class="equity-summary" id="equitySummary" style="display:none;">
+            <div class="eq-stat"><span class="eq-stat-label">总收益</span><span class="eq-stat-value mono"
+                id="eqReturn">--</span></div>
+            <div class="eq-stat"><span class="eq-stat-label">最大回撤</span><span class="eq-stat-value mono"
+                id="eqDrawdown">--</span></div>
+            <div class="eq-stat"><span class="eq-stat-label">Sharpe</span><span class="eq-stat-value mono"
+                id="eqSharpe">--</span></div>
+          </div>
+
+          <!-- Performance Metrics Grid -->
+          <div class="perf-metrics-grid">
+            <div class="perf-metric-card">
+              <span class="perf-metric-label">Win Rate</span>
+              <span class="perf-metric-value mono" id="perfWinRate">--</span>
+            </div>
+            <div class="perf-metric-card">
+              <span class="perf-metric-label">Max Drawdown</span>
+              <span class="perf-metric-value mono" id="perfMaxDrawdown">--</span>
+            </div>
+            <div class="perf-metric-card">
+              <span class="perf-metric-label">Profit Factor</span>
+              <span class="perf-metric-value mono" id="perfProfitFactor">--</span>
+            </div>
+            <div class="perf-metric-card">
+              <span class="perf-metric-label">Sharpe Ratio</span>
+              <span class="perf-metric-value mono" id="perfSharpe">--</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════ VIEW: SETTINGS ══════ -->
+      <section class="view hidden" id="view-settings">
+        <div class="view-header">
+          <h1 data-i18n="nav_settings">系统设置</h1>
+        </div>
+
+        <!-- API Vault -->
+        <div class="glass-card settings-card">
+          <h2 class="section-title" data-i18n="settings_api">API 密钥保险箱</h2>
+          <div class="api-vault">
+            <div class="api-key-field">
+              <input type="password" id="apiKeyInput" value="sk-live-ABCDEFGH1234" class="api-input mono" readonly />
+              <button class="api-toggle-btn" id="apiToggleBtn">👁️</button>
+            </div>
+            <span class="api-permission-badge" data-i18n="settings_permission">读写模式</span>
+          </div>
+        </div>
+
+        <!-- ══ Watchlist Management Panel ══ -->
+        <div class="glass-card settings-card watchlist-panel">
+          <h2 class="section-title">🎯 核心票池管理 (Watchlist)</h2>
+
+          <!-- Quick Add Bar -->
+          <div class="wl-quick-add">
+            <input type="text" id="wlTickerInput" class="wl-input mono" placeholder="搜索 Ticker (如 TSLA)..."
+              maxlength="10" autocomplete="off" />
+            <button id="wlAddBtn" class="wl-add-btn">
+              <span class="wl-add-icon">➕</span> 添加
+            </button>
+          </div>
+
+          <!-- Batch Import -->
+          <div class="wl-batch-import">
+            <textarea id="wlBatchInput" class="wl-batch-textarea mono" rows="3"
+              placeholder="批量粘贴 Ticker，支持换行/空格/逗号分隔&#10;例如: AAPL, MSFT, GOOGL&#10;AMZN NVDA TSLA"></textarea>
+            <div class="wl-batch-actions">
+              <span class="wl-batch-hint" id="wlBatchCount">0 / 50</span>
+              <button id="wlBatchBtn" class="wl-batch-btn">✨ 批量导入</button>
+            </div>
+          </div>
+
+          <!-- Data Table -->
+          <div class="wl-table-wrap">
+            <div class="wl-table-header">
+              <span class="wl-col-ticker">标的</span>
+              <span class="wl-col-opt">期权</span>
+              <span class="wl-col-score">流动性阈值</span>
+              <span class="wl-col-toggle">状态</span>
+              <span class="wl-col-action">操作</span>
+            </div>
+            <div id="wlTableBody" class="wl-table-body">
+              <!-- Rows rendered by JS -->
+            </div>
+          </div>
+
+          <!-- Empty State -->
+          <div id="wlEmptyState" class="wl-empty-state" style="display:none;">
+            <p>📭 当前监控池为空，请在上方添加您的核心关注标的</p>
+          </div>
+        </div>
+
+        <!-- Toast Container -->
+        <div id="wlToastContainer" class="wl-toast-container"></div>
+
+        <!-- System Health Terminal -->
+        <div class="glass-card settings-card sys-terminal-card">
+          <div class="sys-term-header">
+            <div class="sys-term-dots">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+            </div>
+            <span class="sys-term-title">AlphaTheta v2 — System Health Console</span>
+            <button id="btnRecheck" class="sys-term-recheck">⚡ 重新自检</button>
+          </div>
+          <div class="sys-term-body" id="systemTerminal"></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ══════ ROLL MODAL ══════ -->
+  <div id="rollModal" class="roll-modal-overlay" style="display:none;">
+    <div class="roll-modal glass-card">
+      <div class="roll-modal-header">
+        <h2>🔄 展期 (Roll)</h2>
+        <button class="roll-modal-close" onclick="RollManager.close()">✕</button>
+      </div>
+
+      <!-- 旧仓信息 -->
+      <div class="roll-section">
+        <div class="roll-section-label">🔴 Buy to Close (平仓)</div>
+        <div class="roll-row">
+          <span class="roll-field-label">标的</span>
+          <span class="roll-field-value mono" id="rollOldTicker">—</span>
+        </div>
+        <div class="roll-row">
+          <span class="roll-field-label">行权价</span>
+          <span class="roll-field-value mono" id="rollOldStrike">—</span>
+        </div>
+        <div class="roll-row">
+          <span class="roll-field-label">到期日</span>
+          <span class="roll-field-value mono" id="rollOldExpiry">—</span>
+        </div>
+        <div class="roll-row">
+          <span class="roll-field-label">预估平仓成本 (Bid)</span>
+          <span class="roll-field-value mono roll-debit" id="rollOldBid">—</span>
+        </div>
+      </div>
+
+      <!-- 新仓参数 -->
+      <div class="roll-section">
+        <div class="roll-section-label">🟢 Sell to Open (开仓)</div>
+        <div class="roll-row">
+          <span class="roll-field-label">新到期日</span>
+          <input type="date" id="rollNewExpiry" class="roll-input mono" />
+        </div>
+        <div class="roll-row">
+          <span class="roll-field-label">新行权价</span>
+          <input type="number" id="rollNewStrike" step="0.5" class="roll-input mono" />
+        </div>
+        <div class="roll-row">
+          <span class="roll-field-label">预估开仓收入 (Ask)</span>
+          <span class="roll-field-value mono roll-credit" id="rollNewAsk">—</span>
+        </div>
+      </div>
+
+      <!-- Net Credit / Debit -->
+      <div class="roll-net-section">
+        <div class="roll-net-label">NET</div>
+        <div class="roll-net-value mono" id="rollNetValue">$0.00</div>
+        <div class="roll-net-type" id="rollNetType">—</div>
+      </div>
+
+      <!-- Limit Price -->
+      <div class="roll-section">
+        <div class="roll-row">
+          <span class="roll-field-label">Net Limit Price</span>
+          <input type="number" id="rollLimitPrice" step="0.01" class="roll-input mono" placeholder="0.85" />
+        </div>
+        <div class="roll-hint">⚠️ 拒绝市价单 — 必须填写限价</div>
+      </div>
+
+      <!-- Actions -->
+      <div class="roll-actions">
+        <button class="roll-btn-cancel" onclick="RollManager.close()">取消</button>
+        <button class="roll-btn-submit" id="rollSubmitBtn" onclick="RollManager.submit()">确认展期</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+  <script src="renderCharts.js"></script>
+  <!-- ESM 模块入口 — app.js 已完全迁移到 js/main.js -->
+  <script type="module" src="./js/main.js"></script>
+</body>
+
+</html>

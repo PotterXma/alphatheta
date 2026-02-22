@@ -1,0 +1,125 @@
+[
+  {
+    "_meta": {
+      "slice_id": 1,
+      "label": "Feb 28, 2020 — Initial Panic",
+      "description": "VIX飙升至45, RSI跌至30。市场刚进入恐慌但尚未崩溃。S&P500 周跌11.5%, 创08年金融危机以来最大跌幅。",
+      "expected_action": "HOLD",
+      "expected_reason": "Priority 0: VIX Circuit Breaker (VIX > 35)"
+    },
+    "ticker": "SPY",
+    "underlying_price": 296.50,
+    "vix": 45.0,
+    "rsi_14": 30.0,
+    "has_position": false,
+    "current_position_qty": 0,
+    "earnings_date": null,
+    "options_chain": [
+      {
+        "symbol": "SPY200320P00280000",
+        "strike": 280.0,
+        "expiration": "2020-03-20",
+        "option_type": "put",
+        "bid": 8.50,
+        "ask": 9.20,
+        "last": 8.85,
+        "delta": -0.35,
+        "gamma": 0.008,
+        "open_interest": 12500,
+        "volume": 3200
+      },
+      {
+        "symbol": "SPY200320P00270000",
+        "strike": 270.0,
+        "expiration": "2020-03-20",
+        "option_type": "put",
+        "bid": 5.80,
+        "ask": 6.40,
+        "last": 6.10,
+        "delta": -0.22,
+        "gamma": 0.006,
+        "open_interest": 8900,
+        "volume": 1800
+      },
+      {
+        "symbol": "SPY200320P00260000",
+        "strike": 260.0,
+        "expiration": "2020-03-20",
+        "option_type": "put",
+        "bid": 3.90,
+        "ask": 4.50,
+        "last": 4.20,
+        "delta": -0.14,
+        "gamma": 0.005,
+        "open_interest": 6700,
+        "volume": 950
+      }
+    ],
+    "available_cash": 100000.0
+  },
+  {
+    "_meta": {
+      "slice_id": 2,
+      "label": "Mar 16, 2020 — Peak Panic (VIX 82)",
+      "description": "VIX达82.69创历史新高, RSI跌至15。道指单日暴跌2997点(-12.9%), 美联储紧急降息至零。SP500单周跌15%。这是自1987黑色星期一以来最快的崩盘速度。",
+      "expected_action": "HOLD",
+      "expected_reason": "Priority 0: VIX Circuit Breaker (VIX > 35) + KillSwitch should trigger"
+    },
+    "ticker": "SPY",
+    "underlying_price": 239.77,
+    "vix": 82.69,
+    "rsi_14": 15.0,
+    "has_position": false,
+    "current_position_qty": 0,
+    "earnings_date": null,
+    "options_chain": [
+      {
+        "symbol": "SPY200417P00220000",
+        "strike": 220.0,
+        "expiration": "2020-04-17",
+        "option_type": "put",
+        "bid": 18.50,
+        "ask": 20.80,
+        "last": 19.60,
+        "delta": -0.45,
+        "gamma": 0.012,
+        "open_interest": 45000,
+        "volume": 18500
+      },
+      {
+        "symbol": "SPY200417P00200000",
+        "strike": 200.0,
+        "expiration": "2020-04-17",
+        "option_type": "put",
+        "bid": 10.20,
+        "ask": 12.50,
+        "last": 11.30,
+        "delta": -0.28,
+        "gamma": 0.008,
+        "open_interest": 32000,
+        "volume": 12000
+      }
+    ],
+    "available_cash": 100000.0
+  },
+  {
+    "_meta": {
+      "slice_id": 3,
+      "label": "Mar 16, 2020 — Network Blackout",
+      "description": "系统断网模拟: 行情数据缺失或异常值。VIX和RSI数据不可用(NaN/null), 期权链为空。此场景测试系统在数据故障时的防御行为。",
+      "expected_action": "HOLD",
+      "expected_reason": "Insufficient data — strategy should default to HOLD"
+    },
+    "ticker": "SPY",
+    "underlying_price": 239.77,
+    "vix": 0.0,
+    "rsi_14": 50.0,
+    "has_position": false,
+    "current_position_qty": 0,
+    "earnings_date": null,
+    "options_chain": [],
+    "available_cash": 0.0,
+    "_data_quality": "INSUFFICIENT",
+    "_network_error": true
+  }
+]

@@ -1,0 +1,203 @@
+# ════════════════════════════════════════════════════════════════
+# AlphaTheta v2 — 本地一键联调环境
+#
+# 启动: docker compose up -d
+# 停止: docker compose down
+# 重建: docker compose up -d --build
+# 日志: docker compose logs -f api
+# 清理: docker compose down -v  (⚠ 会删除数据卷)
+#
+# 架构:
+#   ┌─────────────────────────────────────────────────┐
+#   │              alphatheta_net (bridge)             │
+#   │                                                 │
+#   │  ┌───────┐    ┌────────────┐    ┌───────────┐   │
+#   │  │  api  │───▶│     db     │    │   redis   │   │
+#   │  │ :8000 │    │ :5432      │    │ :6379     │   │
+#   │  │       │───▶│ TimescaleDB│    │ AOF 持久化│   │
+#   │  └───────┘    └────────────┘    └───────────┘   │
+#   └─────────────────────────────────────────────────┘
+#
+# 启动顺序 (通过 healthcheck + depends_on 保证):
+#   1. db (pg_isready 探针通过)
+#   2. redis (redis-cli ping 探针通过)
+#   3. api (等待 db + redis 全部 healthy)
+# ════════════════════════════════════════════════════════════════
+
+services:
+
+  # ── 前端 (Nginx 静态服务 + API 反向代理) ──
+  # 统一入口: 用户只需访问 http://localhost:3000
+  # /api/ 请求由 nginx 反代到后端, 消除 CORS 问题
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: alphatheta-web
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - alphatheta_net
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  # ── 核心 API 服务 ──
+  # 不再直接暴露端口到宿主机 — 所有外部流量通过 nginx 反代
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: alphatheta-api
+    restart: unless-stopped
+    # 仅暴露给 Docker 内部网络, 不映射到宿主机
+    expose:
+      - "8000"
+    env_file:
+      - .env
+    environment:
+      # 覆盖 .env 中的 localhost → 使用 Docker 内部 DNS
+      DATABASE_URL: postgresql+asyncpg://alpha:alpha@db:5432/alphatheta
+      REDIS_URL: redis://redis:6379/0
+    # ── 启动顺序: 必须等 db 和 redis 健康后才启动 ──
+    # 原因: FastAPI 启动时会初始化 DB 连接池和 Redis 客户端
+    # 如果依赖服务未就绪, 启动会失败或产生连接错误
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - alphatheta_net
+    # 资源限制 — 防止内存泄漏或 OOM
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # ── PostgreSQL + TimescaleDB (时序数据库) ──
+  # TimescaleDB 扩展用于高效存储和查询时序行情数据
+  # 使用 HA 镜像确保数据可靠性 (含 WAL 日志、自动 VACUUM)
+  db:
+    image: timescale/timescaledb-ha:pg14
+    container_name: alphatheta-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: alpha
+      POSTGRES_PASSWORD: alpha
+      POSTGRES_DB: alphatheta
+    volumes:
+      # 命名卷: 容器删除后数据不丢失
+      # 只有 docker compose down -v 才会清除
+      - pgdata:/home/postgres/pgdata/data
+    # ── 健康检查: pg_isready 探针 ──
+    # pg_isready 是 PostgreSQL 官方推荐的就绪检查工具
+    # -U alpha: 使用应用用户检查, 确保权限配置也正确
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U alpha -d alphatheta" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - alphatheta_net
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  # ── Redis 7 缓存 + 消息队列 ──
+  # 用途: 行情缓存 (TICK_TTL=30s)、KillSwitch 状态、Rate Limiter
+  redis:
+    image: redis:7-alpine
+    container_name: alphatheta-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    # ── AOF 持久化 ──
+    # --appendonly yes: 开启 Append-Only File 日志
+    #   每次写操作都追加到 AOF 文件, 重启后自动恢复
+    #   对交易系统至关重要: KillSwitch 状态不能因重启丢失
+    # --maxmemory 128mb: 限制最大内存, 防止 OOM
+    # --maxmemory-policy allkeys-lru: 内存满时淘汰最久未使用的 Key
+    command: >
+      redis-server
+        --appendonly yes
+        --maxmemory 128mb
+        --maxmemory-policy allkeys-lru
+        --save 60 100
+    volumes:
+      - redisdata:/data
+    # ── 健康检查: redis-cli ping 探针 ──
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    networks:
+      - alphatheta_net
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 64M
+
+  # ── Scanner Daemon (LEAPS 黄金坑扫描引擎) ──
+  # 复用 api 镜像, 不同 entrypoint
+  # 独立进程, 15 分钟扫描一次 Watchlist
+  scanner:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: alphatheta-scanner
+    restart: unless-stopped
+    entrypoint: [ "python3", "scanner_entry.py" ]
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://alpha:alpha@db:5432/alphatheta
+      REDIS_URL: redis://redis:6379/0
+      SCAN_INTERVAL_SECONDS: "900"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - alphatheta_net
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 64M
+
+# ── 自定义桥接网络 ──
+# 所有服务在同一网络内通过服务名 DNS 互通
+# 隔离于宿主机默认 bridge, 避免端口冲突和安全风险
+networks:
+  alphatheta_net:
+    driver: bridge
+    name: alphatheta_net
+
+# ── 命名数据卷 ──
+# 持久化存储: 容器销毁后数据仍保留
+# 仅 docker compose down -v 会清除
+volumes:
+  pgdata:
+    name: alphatheta_pgdata
+  redisdata:
+    name: alphatheta_redisdata
