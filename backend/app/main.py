@@ -228,6 +228,11 @@ def create_app() -> FastAPI:
 
     app.add_middleware(RateLimitMiddleware)
 
+    # ── L1.8: Visitor Tracking (IP 统计 — Redis 持久化) ──
+    from app.middleware.visitor_tracking import VisitorTrackingMiddleware
+
+    app.add_middleware(VisitorTrackingMiddleware)
+
     # ── L1.5: Trace ID (最外层，执行在 RateLimit 之前) ──
     from app.middleware.trace_id import TraceIdMiddleware
 

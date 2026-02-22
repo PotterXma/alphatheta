@@ -12,6 +12,7 @@ RUN rm -rf /usr/share/nginx/html/*
 
 # 复制前端静态文件
 COPY index.html /usr/share/nginx/html/
+COPY stats.html /usr/share/nginx/html/
 COPY app.js /usr/share/nginx/html/
 COPY style.css /usr/share/nginx/html/
 COPY renderCharts.js /usr/share/nginx/html/
